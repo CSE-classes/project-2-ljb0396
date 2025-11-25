@@ -7,6 +7,8 @@
 #include "mmu.h"
 #include "proc.h"
 
+extern int page_allocator_type;
+
 extern int free_frame_cnt; // CS3320 for project3
 int
 sys_fork(void)
@@ -51,10 +53,29 @@ sys_sbrk(void)
 
   if(argint(0, &n) < 0)
     return -1;
+
   addr = proc->sz;
-  if(growproc(n) < 0)
-    return -1;
-  return addr;
+
+  if(page_allocator_type == 0){
+    if(growproc(n) < 0)
+      return -1;
+  }else{
+    if(n < 0){
+      if((addr = deallocuvm(proc->pgdir, addr, addr + n)) == 0)
+      {
+        cprintf("Deallocating pages failed!\n"); // CS3320: project 2
+        return -1;
+      }
+    }
+
+    if((addr + n) > KERNBASE){
+      cprintf("Allocating pages failed!\n"); // CS3320: project 2
+      return -1;
+    }else{
+      proc->sz = proc->sz + n;
+    }
+   }
+   return addr;
 }
 
 int
@@ -99,7 +120,6 @@ int sys_print_free_frame_cnt(void)
 }
 
 // CS 3320 set page allocator
-extern int page_allocator_type;
 int sys_set_page_allocator(void)
 {
     if(argint(0,&page_allocator_type) < 0){
@@ -107,11 +127,11 @@ int sys_set_page_allocator(void)
     }
     // please remove the following 
     // when you start implementing your page allocator
-    if (page_allocator_type == 1)
-    {
-        cprintf("Your lazy allocator has not been implemented!\n");
-	return -1;
-    }
+    //if (page_allocator_type == 1)
+    //{
+     //   cprintf("Your lazy allocator has not been implemented!\n");
+//	return -1;
+  //  }
     return 0;
 }
 
